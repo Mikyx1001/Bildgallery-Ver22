@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Galerie mit zwei Zeilen Menü & Gallery-Farb-Config</title>
+
+  <style>
+    :root {
+      /* Seite */
+      --main-bg: #f4f4f9;
+      --menu-bg: #2196F3;
+
+      /* Menü Buttons */
+      --menu-btn-bg: #1976D2;
+      --menu-btn-text: #ffffff;
+
+      /* Popup */
+      --popup-bg: rgba(0,0,0,0.8);
+      --popup-text: #ffffff;
+
+      /* Pfeile und Play-Button */
+      --arrow-btn-bg: transparent;
+      --arrow-btn-text: #ffffff;
+
+      /* Textfelder im Popup */
+      --text-field-bg: #efeff3;
+      --text-field-text: #000000;
+
+      /* Nur für Gallery-Button separat: */
+      --slideshow-gallery-bg: #1976D2;
+      --slideshow-gallery-text: #ffffff;
+
+      /* Allgemeine Textfarbe */
+      --text-color: #000000;
+    }
+
+    body {
+      margin: 0;
+      background-color: var(--main-bg);
+      color: var(--text-color);
+      font-family: Arial, sans-serif;
+    }
+
+    /* ZWEIZEILIGES MENÜ */
+    header.menu-container {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;  /* kleiner Abstand zwischen den Zeilen */
+      background-color: var(--menu-bg);
+      z-index: 9999;
+    }
+
+    .menu-row1, .menu-row2 {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      padding: 0.2rem 0.4rem; /* reduzierte Höhe */
+      gap: 0.3rem;
+    }
+
+    /* Slideshow-Buttons in Zeile 1 */
+    .slideshow-btn {
+      flex: 1;
+      min-width: 80px;
+      background-color: var(--menu-btn-bg);
+      color: var(--menu-btn-text);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 0.3rem 0.5rem;
+      font-size: 0.8rem;
+      text-align: center;
+      transition: filter 0.3s;
+    }
+    /* Der "Gallery"-Button doppelt so breit und eigene Farben */
+    .slideshow-btn.gallery {
+      flex: 2;
+      background-color: var(--slideshow-gallery-bg);
+      color: var(--slideshow-gallery-text);
+    }
+    .fixed-size-btn {
+      width: 40px;
+      background-color: var(--menu-btn-bg);
+      color: var(--menu-btn-text);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 0.3rem;
+      font-size: 0.8rem;
+      text-align: center;
+      transition: filter 0.3s;
+    }
+    .slideshow-btn:hover:not(:disabled),
+    .fixed-size-btn:hover:not(:disabled) {
+      filter: brightness(0.9);
+    }
+
+    /* Buttons in Zeile 2 */
+    .menu-btn {
+      background-color: var(--menu-btn-bg);
+      color: var(--menu-btn-text);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 0.3rem 0.5rem;
+      font-size: 0.8rem;
+      transition: opacity 0.3s, cursor 0.3s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .menu-btn:hover:not(:disabled) {
+      filter: brightness(0.9);
+    }
+    .menu-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Galerie: offset durch 2-zeiliges Menü */
+    .container {
+      width: 90%;
+      max-width: 2000px;
+      margin: 100px auto 2rem auto; /* 100px margin-top */
+    }
+
+    .gallery {
+      column-count: 6; /* Standard */
+      column-gap: 8px;
+    }
+    .image-item {
+      display: inline-block;
+      width: 100%;
+      margin: 0 0 8px 0;
+      background-color: #fff;
+      border-radius: 4px;
+      border: 0 solid transparent;
+      overflow: hidden;
+    }
+    .image-item img {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: cover;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .image-item img:hover {
+      transform: scale(1.05);
+    }
+    .image-item.marked {
+      border: 2px solid red;
+    }
+
+    /* Popup */
+    .popup {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: var(--popup-bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.3s, visibility 0.3s;
+      z-index: 1000;
+      color: var(--popup-text);
+    }
+    .popup.visible {
+      visibility: visible;
+      opacity: 1;
+    }
+    #popupImage {
+      max-width: 100%;
+      max-height: 70vh;
+      object-fit: contain;
+      margin-top: 2rem;
+      transition: max-height 0.3s;
+    }
+    .text-fields-container {
+      position: relative;
+      margin-top: 20px;
+      width: 33%;
+      min-width: 250px;
+    }
+    .text-field {
+      background-color: var(--text-field-bg);
+      color: var(--text-field-text);
+      margin: 0.5rem 0;
+      padding: 0.5rem;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      overflow: hidden;
+      max-height: 1.5em;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .text-field:focus {
+      max-height: none;
+      overflow: visible;
+      white-space: normal;
+    }
+    .popup-controls-row {
+      position: absolute;
+      bottom: 10px;
+      display: flex;
+      gap: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1001;
+    }
+    .nav-arrow, .playstop-btn {
+      background-color: var(--arrow-btn-bg);
+      color: var(--arrow-btn-text);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 0.4rem 0.8rem;
+      background-image: none;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: filter 0.3s;
+    }
+    .nav-arrow:hover:not(:disabled), .playstop-btn:hover:not(:disabled) {
+      filter: brightness(0.9);
+    }
+
+    /* Neu-Eingabezeile */
+    .new-assignment-row {
+      display: none;
+      padding: 0.5rem 0;
+      margin-bottom: 0.5rem;
+      background-color: #eaeaf3;
+      border-radius: 4px;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .new-assignment-row input,
+    .new-assignment-row select {
+      font-size: 0.9rem;
+      padding: 0.3rem 0.5rem;
+    }
+
+    /* Matrix-Buttons: Normal menü-Farben, nur Buchstabe */
+    .matrix-btn {
+      background-color: var(--menu-btn-bg);
+      color: var(--menu-btn-text);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 0.3rem 0.5rem;
+      font-size: 0.8rem;
+      transition: filter 0.3s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .matrix-btn:hover:not(:disabled) {
+      filter: brightness(0.9);
+    }
+    .matrix-btn.active {
+      background-color: #ff0000;
+      color: #ffffff;
+    }
+
+    /* Farb-Config Overlay */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      visibility: hidden;
+      opacity: 0;
+      transition: 0.3s;
+      z-index: 2000;
+    }
+    .modal-overlay.visible {
+      visibility: visible;
+      opacity: 1;
+    }
+    .color-config-modal {
+      background: #fff;
+      width: 400px;
+      max-width: 90%;
+      padding: 1rem;
+      border-radius: 6px;
+      margin: 100px auto;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      position: relative;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .color-config-modal h2 {
+      margin: 0 0 1rem 0;
+      color: var(--text-color);
+    }
+    .color-config-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.5rem 0;
+      flex-wrap: wrap;
+    }
+    .color-config-row label {
+      flex: 1 1 auto;
+      color: var(--text-color);
+    }
+    .color-config-row input[type="color"],
+    .color-config-row input[type="text"] {
+      width: 80px;
+    }
+    .color-config-buttons {
+      margin-top: 1rem;
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+
+    /* Vollbild-Popup */
+    .popup:fullscreen .text-fields-container {
+      display: none;
+    }
+    .popup:fullscreen #popupImage {
+      max-height: 90vh;
+    }
+
+    /* Deaktivierte Buttons */
+    .nav-arrow:disabled, .playstop-btn:disabled,
+    .menu-btn:disabled, .slideshow-btn:disabled, .fixed-size-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ZWEIZEILIGES MENÜ -->
+  <header class="menu-container">
+    <!-- Row 1: 3 Slideshow + Spalten + Zeit -->
+    <div class="menu-row1">
+      <!-- 1) current now -->
+      <button id="slideshowCurrentBtn" class="slideshow-btn" 
+        title="Slideshow über aktuell angezeigte Bilder">
+        current now
+      </button>
+
+      <!-- 2) Spalten -->
+      <button id="columnCountBtn" class="fixed-size-btn" 
+        title="Spaltenzahl">6</button>
+
+      <!-- 3) Gallery (doppelt so breit, eigene Farbe) -->
+      <button id="slideshowGalleryBtn" class="slideshow-btn gallery" 
+        title="Zufällige Slideshow aller Bilder">
+        Gallery
+      </button>
+
+      <!-- 4) Zeit -->
+      <button id="slideshowTimeBtn" class="fixed-size-btn" 
+        title="Slideshow-Zeit">3</button>
+
+      <!-- 5) Favoriten (Standard-Farbe) -->
+      <button id="slideshowFavesBtn" class="slideshow-btn" 
+        title="Zufällige Slideshow der Favoriten">
+        Favoriten
+      </button>
+    </div>
+
+    <!-- Row 2: Rest -->
+    <div class="menu-row2">
+      <button id="uploadButton" class="menu-btn" title="Bilder hochladen">Bilder hochladen</button>
+      <input type="file" id="imageUpload" accept="image/jpeg,image/png,image/webp" multiple style="display:none" />
+
+      <button id="showNewBtn" class="menu-btn" title="Neu (ohne Prompt)">Neu</button>
+
+      <!-- Button: Als Such-Filter -->
+      <button id="sortPromptBtn" class="menu-btn" title="Nach Prompt durchsuchen">Prompt</button>
+
+      <button id="sortModelBtn" class="menu-btn" title="Nach Modell sortieren">Model</button>
+      <button id="sortMonthBtn" class="menu-btn" title="Nach Datum sortieren">Monat</button>
+      <button id="sortRandomBtn" class="menu-btn" title="Zufällige Sortierung">Zufällig</button>
+
+      <button id="promptGroupsBtn" class="menu-btn" title="Prompt-Gruppen-Übersicht">Prompt Gruppen</button>
+      <button id="promptGroupsMergeBtn" class="menu-btn" title="Prompt-Gruppen zusammenführen">Prompt Gruppen+</button>
+
+      <button id="favShowBtn" class="menu-btn" title="Favoriten anzeigen">★</button>
+      <button id="favEditBtn" class="menu-btn" title="Favoriten bearbeiten">★+</button>
+
+      <button id="matrixBtnX" class="matrix-btn" title="X Achse">A</button>
+      <button id="matrixBtnY" class="matrix-btn" title="Y Achse">A</button>
+      <button id="matrixBtnZ" class="matrix-btn" title="Z Achse">A</button>
+
+      <button id="ingEditBtn" class="menu-btn" title="Individuelle Gruppe bearbeiten">InG +</button>
+
+      <button id="openColorConfigBtn" class="menu-btn" title="Farbschema einstellen">🎨</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Neu-Eingabezeile -->
+    <div class="new-assignment-row" id="newAssignmentRow">
+      <input type="text" id="newPromptInput" placeholder="Prompt" style="flex:2;" />
+      <select id="newModelSelect" style="flex:1;"></select>
+      <input type="text" id="newModelInput" placeholder="Neues Modell" style="flex:1;" />
+      <input type="text" id="newMatrixInput" placeholder="(Optional)" style="flex:1;" />
+      <button id="newOkBtn" style="flex:0;">OK</button>
+    </div>
+
+    <div class="gallery" id="gallery"></div>
+  </div>
+
+  <!-- Popup -->
+  <div class="popup" id="popup">
+    <img id="popupImage" src="" alt="Bildanzeige" />
+
+    <div class="text-fields-container">
+      <div style="display:flex; align-items:center;">
+        <p id="popupPrompt" class="text-field" contenteditable="true">Kein Prompt</p>
+        <button id="copyPromptButton" style="border:none; background:none; cursor:pointer;">Kopieren</button>
+      </div>
+      <div class="model-row">
+        <select id="popupModelSelect"></select>
+        <input type="text" class="model-input" id="popupNewModelInput" placeholder="Neues Modell" />
+        <input type="text" class="date-input" id="popupDate" readonly />
+      </div>
+    </div>
+
+    <div class="popup-controls-row">
+      <button class="nav-arrow" id="prevArrow">←</button>
+      <button class="playstop-btn" id="playStopBtn">▶</button>
+      <button class="nav-arrow" id="nextArrow">→</button>
+    </div>
+  </div>
+
+  <!-- Farb-Config -->
+  <div class="modal-overlay" id="colorConfigOverlay">
+    <div class="color-config-modal">
+      <h2>Farben anpassen</h2>
+
+      <div class="color-config-row">
+        <label for="cc_main_bg">Seiten Hintergrund</label>
+        <input type="color" id="cc_main_bg_color" />
+        <input type="text" id="cc_main_bg" />
+      </div>
+      <div class="color-config-row">
+        <label for="cc_menu_bg">Menü Hintergrund</label>
+        <input type="color" id="cc_menu_bg_color" />
+        <input type="text" id="cc_menu_bg" />
+      </div>
+      <div class="color-config-row">
+        <label for="cc_menu_btn_bg">Menü Buttons</label>
+        <input type="color" id="cc_menu_btn_bg_color" />
+        <input type="text" id="cc_menu_btn_bg" />
+      </div>
+      <div class="color-config-row">
+        <label for="cc_menu_btn_text">Menü Buttons Text</label>
+        <input type="color" id="cc_menu_btn_text_color" />
+        <input type="text" id="cc_menu_btn_text" />
+      </div>
+
+      <div class="color-config-row">
+        <label for="cc_popup_bg">Popup Hintergrund</label>
+        <input type="color" id="cc_popup_bg_color" />
+        <input type="text" id="cc_popup_bg" />
+      </div>
+
+      <div class="color-config-row">
+        <label for="cc_field_bg">Felder Hintergrund</label>
+        <input type="color" id="cc_field_bg_color" />
+        <input type="text" id="cc_field_bg" />
+      </div>
+      <div class="color-config-row">
+        <label for="cc_field_text">Felder Text</label>
+        <input type="color" id="cc_field_text_color" />
+        <input type="text" id="cc_field_text" />
+      </div>
+
+      <div class="color-config-row">
+        <label for="cc_arrow_bg">Pfeile Hintergrund</label>
+        <input type="color" id="cc_arrow_bg_color" />
+        <input type="text" id="cc_arrow_bg" />
+      </div>
+      <div class="color-config-row">
+        <label for="cc_arrow_text">Pfeile Text</label>
+        <input type="color" id="cc_arrow_text_color" />
+        <input type="text" id="cc_arrow_text" />
+      </div>
+
+      <div class="color-config-row">
+        <label for="cc_slideshow_gallery_bg">Slideshow Gallery Hintergrund</label>
+        <input type="color" id="cc_slideshow_gallery_bg_color" />
+        <input type="text" id="cc_slideshow_gallery_bg" />
+      </div>
+      <div class="color-config-row">
+        <label for="cc_slideshow_gallery_text">Slideshow Gallery Text</label>
+        <input type="color" id="cc_slideshow_gallery_text_color" />
+        <input type="text" id="cc_slideshow_gallery_text" />
+      </div>
+
+      <div class="color-config-buttons">
+        <button id="colorPreviewBtn">Vorschau</button>
+        <button id="colorOkBtn">OK</button>
+        <button id="colorCancelBtn">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* 
+      ---------------
+      JavaScript Code
+      ---------------
+    */
+
+    /* ----------------------------------------------------
+       Globale Variablen
+    ---------------------------------------------------- */
+
+    let images = [];
+    let prompts = {};
+
+    // Mapping Prompt <-> Koordinate (für auto Zuweisung)
+    let promptToGroupMap = {};
+    let groupToPromptMap = {};
+
+    let currentGalleryImages = [];
+    let currentImageIndex = 0;
+
+    let isSlideshowRunning = false;
+    let slideshowOrder = [];
+    let slideshowInterval = null;
+    let slideshowTimeIndex = 3;
+
+    let scale = 1;
+    let offsetY = 0;
+
+    // Zustände
+    let isFavMode = false;
+    let isIndGroupMode = false;
+    let isPromptGroupsMergeMode = false;
+    let markedGroups = [];
+
+    // Matrix
+    let xLetter = 'A', xActive=false;
+    let yLetter = 'A', yActive=false;
+    let zLetter = 'A', zActive=false;
+
+    // DOM
+    const gallery = document.getElementById('gallery');
+    const popup = document.getElementById('popup');
+    const popupImage = document.getElementById('popupImage');
+    const popupPrompt = document.getElementById('popupPrompt');
+    const copyPromptButton = document.getElementById('copyPromptButton');
+    const popupModelSelect = document.getElementById('popupModelSelect');
+    const popupNewModelInput = document.getElementById('popupNewModelInput');
+    const popupDate = document.getElementById('popupDate');
+
+    const prevArrow = document.getElementById('prevArrow');
+    const nextArrow = document.getElementById('nextArrow');
+    const playStopBtn = document.getElementById('playStopBtn');
+
+    const uploadButton = document.getElementById('uploadButton');
+    const imageUpload = document.getElementById('imageUpload');
+
+    const showNewBtn = document.getElementById('showNewBtn');
+
+    // Neu-Eingabe
+    const newAssignmentRow = document.getElementById('newAssignmentRow');
+    const newPromptInput = document.getElementById('newPromptInput');
+    const newModelSelect = document.getElementById('newModelSelect');
+    const newModelInput  = document.getElementById('newModelInput');
+    const newMatrixInput = document.getElementById('newMatrixInput');
+    const newOkBtn       = document.getElementById('newOkBtn');
+
+    // Sortier-/Filter-Buttons
+    const sortPromptBtn   = document.getElementById('sortPromptBtn');
+    const sortModelBtn    = document.getElementById('sortModelBtn');
+    const sortMonthBtn    = document.getElementById('sortMonthBtn');
+    const sortRandomBtn   = document.getElementById('sortRandomBtn');
+
+    // Spalten & Slideshow-Zeit
+    const columnCountBtn  = document.getElementById('columnCountBtn');
+    const slideshowTimeBtn= document.getElementById('slideshowTimeBtn');
+
+    // Slideshow
+    const slideshowCurrentBtn= document.getElementById('slideshowCurrentBtn');
+    const slideshowGalleryBtn= document.getElementById('slideshowGalleryBtn');
+    const slideshowFavesBtn  = document.getElementById('slideshowFavesBtn');
+
+    // Prompt Gruppen
+    const promptGroupsBtn      = document.getElementById('promptGroupsBtn');
+    const promptGroupsMergeBtn = document.getElementById('promptGroupsMergeBtn');
+
+    // Favoriten
+    const favShowBtn = document.getElementById('favShowBtn');
+    const favEditBtn = document.getElementById('favEditBtn');
+
+    // Matrix-Buttons
+    const matrixBtnX = document.getElementById('matrixBtnX');
+    const matrixBtnY = document.getElementById('matrixBtnY');
+    const matrixBtnZ = document.getElementById('matrixBtnZ');
+    const ingEditBtn = document.getElementById('ingEditBtn');
+
+    // Farb-Config
+    const openColorConfigBtn = document.getElementById('openColorConfigBtn');
+    const colorConfigOverlay = document.getElementById('colorConfigOverlay');
+    const colorPreviewBtn = document.getElementById('colorPreviewBtn');
+    const colorOkBtn = document.getElementById('colorOkBtn');
+    const colorCancelBtn = document.getElementById('colorCancelBtn');
+
+    let originalColors = {};
+    const colorInputs = [
+      { varName: '--main-bg',         textId: 'cc_main_bg',         colorId: 'cc_main_bg_color' },
+      { varName: '--menu-bg',         textId: 'cc_menu_bg',         colorId: 'cc_menu_bg_color' },
+      { varName: '--menu-btn-bg',     textId: 'cc_menu_btn_bg',     colorId: 'cc_menu_btn_bg_color' },
+      { varName: '--menu-btn-text',   textId: 'cc_menu_btn_text',   colorId: 'cc_menu_btn_text_color' },
+      { varName: '--popup-bg',        textId: 'cc_popup_bg',        colorId: 'cc_popup_bg_color' },
+      { varName: '--text-field-bg',   textId: 'cc_field_bg',        colorId: 'cc_field_bg_color' },
+      { varName: '--text-field-text', textId: 'cc_field_text',      colorId: 'cc_field_text_color' },
+      { varName: '--arrow-btn-bg',    textId: 'cc_arrow_bg',        colorId: 'cc_arrow_bg_color' },
+      { varName: '--arrow-btn-text',  textId: 'cc_arrow_text',       colorId: 'cc_arrow_text_color' },
+      { varName: '--slideshow-gallery-bg',  textId: 'cc_slideshow_gallery_bg',  colorId: 'cc_slideshow_gallery_bg_color' },
+      { varName: '--slideshow-gallery-text',textId: 'cc_slideshow_gallery_text',colorId: 'cc_slideshow_gallery_text_color' },
+    ];
+
+    /* ----------------------------------------------------
+       DOMContentLoaded
+    ---------------------------------------------------- */
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadColors();
+      await loadImages();
+      await loadPrompts();
+      await loadModels();
+      initColorConfig();
+      initModelInput();
+      initColumnCountButton();
+      initColumnCountWheel();
+      initSlideshowTimeWheel();
+      initMatrixButtons();
+
+      // Neu-Button
+      showNewBtn.addEventListener('click', async () => {
+        exitAllModes();
+        await showNewImages(); 
+      });
+      newOkBtn.addEventListener('click', handleNewOkClick);
+
+      // Slideshow-Buttons
+      slideshowCurrentBtn.addEventListener('click', () => {
+        if (!currentGalleryImages.length) return;
+        startSlideshow(currentGalleryImages, 0);
+      });
+      slideshowGalleryBtn.addEventListener('click', () => {
+        if (!images.length) return;
+        const arr = [...images].sort(() => 0.5 - Math.random());
+        startSlideshow(arr, 0);
+      });
+      slideshowFavesBtn.addEventListener('click', () => {
+        const fav = images.filter(f => prompts[f]?.isFavorite);
+        if (!fav.length) return;
+        const arr = fav.sort(() => 0.5 - Math.random());
+        startSlideshow(arr, 0);
+      });
+
+      // Prompt als Such-Filter
+      sortPromptBtn.addEventListener('click', () => {
+        exitAllModes();
+        const searchTerm = window.prompt("Bitte Prompt-Suchbegriff eingeben:");
+        if (!searchTerm) return;
+        const filtered = currentGalleryImages.filter(fname => {
+          const p = prompts[fname]?.prompt || '';
+          return p.toLowerCase().includes(searchTerm.toLowerCase());
+        });
+        renderGallery(filtered);
+      });
+
+      // Andere Sortierungen
+      sortModelBtn.addEventListener('click', () => {
+        exitAllModes();
+        currentGalleryImages.sort((a,b)=>{
+          const ma=(prompts[a]?.model||'').toLowerCase();
+          const mb=(prompts[b]?.model||'').toLowerCase();
+          return ma.localeCompare(mb);
+        });
+        renderGallery(currentGalleryImages);
+      });
+      sortMonthBtn.addEventListener('click', () => {
+        exitAllModes();
+        currentGalleryImages.sort((a,b)=>{
+          const ma=(prompts[a]?.monthYear||'');
+          const mb=(prompts[b]?.monthYear||'');
+          return ma.localeCompare(mb);
+        });
+        renderGallery(currentGalleryImages);
+      });
+      sortRandomBtn.addEventListener('click', () => {
+        exitAllModes();
+        currentGalleryImages.sort(()=>0.5 - Math.random());
+        renderGallery(currentGalleryImages);
+      });
+
+      // Prompt Gruppen -> Übersicht
+      promptGroupsBtn.addEventListener('click', () => {
+        exitAllModes();
+        showPromptGroupsOverview();
+      });
+      promptGroupsMergeBtn.addEventListener('click', async () => {
+        if (!isPromptGroupsMergeMode) {
+          // Markiermodus starten
+          isPromptGroupsMergeMode = true;
+          promptGroupsMergeBtn.textContent = 'Fertig';
+          disableAllButtonsExcept(promptGroupsMergeBtn);
+          showGroupMarkingMode();
+        } else {
+          // Merge ausführen (ohne Prompt-Änderung!)
+          await mergeSelectedGroups();
+          isPromptGroupsMergeMode = false;
+          promptGroupsMergeBtn.textContent = 'Prompt Gruppen+';
+          enableAllButtons();
+          showPromptGroupsOverview();
+        }
+      });
+
+      // Favoriten
+      favEditBtn.addEventListener('click', () => {
+        if (!isFavMode) {
+          isFavMode = true;
+          favEditBtn.textContent = '★+ bearbeiten';
+          disableAllButtonsExcept(favEditBtn);
+          renderGallery();  // Markiermodus
+        } else {
+          // Speichern
+          const all = document.querySelectorAll('.image-item');
+          all.forEach(div => {
+            const fname=decodeURIComponent(div.querySelector('img').src.split('/images/')[1]);
+            if (!prompts[fname]) prompts[fname] = {};
+            prompts[fname].isFavorite = div.classList.contains('marked');
+            if (prompts[fname].isFavorite) {
+              prompts[fname].promptGroupId = '';
+            }
+            savePromptData(fname);
+          });
+          isFavMode = false;
+          favEditBtn.textContent = '★+';
+          enableAllButtons();
+          showFavorites();
+        }
+      });
+      favShowBtn.addEventListener('click', () => {
+        showFavorites();
+      });
+
+      // IndGruppe (Matrix manuell) -> ingEditBtn
+      ingEditBtn.addEventListener('click', () => {
+        if (!isIndGroupMode) {
+          isIndGroupMode = true;
+          ingEditBtn.textContent = 'InG bearbeiten';
+          disableAllButtonsExcept(ingEditBtn);
+          renderGallery();
+        } else {
+          const groupId = getCurrentMatrixGroupId();
+          const all = document.querySelectorAll('.image-item');
+          all.forEach(div => {
+            const fname=decodeURIComponent(div.querySelector('img').src.split('/images/')[1]);
+            if(!prompts[fname]) prompts[fname]={};
+            if(!Array.isArray(prompts[fname].indGroups)) prompts[fname].indGroups=[];
+            if(div.classList.contains('marked')){
+              if(!prompts[fname].indGroups.includes(groupId)){
+                prompts[fname].indGroups.push(groupId);
+              }
+            } else {
+              prompts[fname].indGroups=prompts[fname].indGroups.filter(x=>x!==groupId);
+            }
+            prompts[fname].promptGroupId=''; // manuell
+            savePromptData(fname);
+          });
+          isIndGroupMode = false;
+          ingEditBtn.textContent = 'InG +';
+          enableAllButtons();
+          showIndGroup();
+        }
+      });
+
+      // Favoriten beim Start (optional)
+      showFavorites();
+    });
+
+    /* ----------------------------------------------------
+       Laden
+    ---------------------------------------------------- */
+    async function loadColors() {
+      try {
+        const r = await fetch('/api/colors');
+        if(!r.ok) throw new Error('Fehler bei Colors');
+        const col = await r.json();
+        Object.keys(col).forEach(k=>{
+          document.documentElement.style.setProperty(`--${k}`, col[k]);
+        });
+      } catch(e){ console.error(e); }
+    }
+    async function loadImages() {
+      try {
+        const r = await fetch('/api/images');
+        if(!r.ok) throw new Error('Fehler bei Images');
+        images = await r.json();
+      } catch(e){ console.error(e); }
+    }
+    async function loadPrompts() {
+      try {
+        const r = await fetch('/api/prompts');
+        if(!r.ok) throw new Error('Fehler bei Prompts');
+        prompts = await r.json();
+
+        // Prompt <-> Gruppe neu aufbauen
+        promptToGroupMap = {};
+        groupToPromptMap = {};
+        for (const fname of Object.keys(prompts)) {
+          const p = prompts[fname];
+          if (!p.prompt) continue;
+          if (!p.promptGroupId) continue;
+          if (!groupToPromptMap[p.promptGroupId]) {
+            groupToPromptMap[p.promptGroupId] = p.prompt;
+          }
+          if (!promptToGroupMap[p.prompt]) {
+            promptToGroupMap[p.prompt] = p.promptGroupId;
+          }
+        }
+
+        // Bilder so sortieren, dass Bilder ohne Prompt zuerst
+        images.sort((a,b)=>{
+          const hasA=!!(prompts[a]?.prompt);
+          const hasB=!!(prompts[b]?.prompt);
+          if(hasA===hasB) return 0;
+          return hasA?1:-1;
+        });
+      } catch(e){ console.error(e); }
+    }
+    async function loadModels() {
+      try {
+        const r=await fetch('/api/models');
+        if(!r.ok) throw new Error('Fehler bei Models');
+        const ml=await r.json();
+
+        newModelSelect.innerHTML='';
+        popupModelSelect.innerHTML='';
+        ml.forEach(m=>{
+          const opt=document.createElement('option');
+          opt.value=m; opt.textContent=m;
+          newModelSelect.appendChild(opt.cloneNode(true));
+          popupModelSelect.appendChild(opt);
+        });
+      } catch(e){ console.error(e); }
+    }
+
+    /* ----------------------------------------------------
+       Prompt <-> Gruppe
+    ---------------------------------------------------- */
+    function getOrCreateGroupForPrompt(promptStr) {
+      if (promptToGroupMap[promptStr]) {
+        return promptToGroupMap[promptStr];
+      } else {
+        const newCoord = findFreeMatrixCoordinate();
+        if (!newCoord) {
+          alert("Keine freie Koordinate mehr verfügbar!");
+          return "";
+        }
+        promptToGroupMap[promptStr] = newCoord;
+        groupToPromptMap[newCoord] = promptStr;
+        return newCoord;
+      }
+    }
+
+    function findFreeMatrixCoordinate() {
+      // Sucht die erste Koordinate A..Z in x,y,z, die noch frei ist
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      for (let x=0; x<26; x++){
+        for (let y=0; y<26; y++){
+          for (let z=0; z<26; z++){
+            const coord = "ID" + letters[x] + letters[y] + letters[z];
+            if (!groupToPromptMap[coord]) {
+              // frei
+              return coord;
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    /* ----------------------------------------------------
+       Neu: Bilder ohne Prompt
+    ---------------------------------------------------- */
+    async function showNewImages() {
+      // Lade ggf. neu
+      await loadImages();
+      await loadPrompts();
+
+      // 1) Für alle Bilder mit Prompt, aber ohne groupId => auto Koord
+      for (const fname of images) {
+        const p = prompts[fname];
+        if (!p) continue;
+        if (p.prompt && !p.promptGroupId) {
+          const grp = getOrCreateGroupForPrompt(p.prompt);
+          p.promptGroupId = grp;
+          await savePromptData(fname);
+        }
+      }
+
+      // 2) Zeige promptlose Bilder
+      const arr = images.filter(f => !prompts[f] || !prompts[f].prompt);
+      newAssignmentRow.style.display = 'flex';
+      renderGallery(arr);
+    }
+
+    async function handleNewOkClick() {
+      const massPrompt = newPromptInput.value.trim();
+      let massModel = newModelSelect.value;
+      const newMdl = newModelInput.value.trim();
+
+      if (newMdl) {
+        await addNewModel(newMdl);
+        massModel = newMdl;
+      }
+
+      let groupId = "";
+      if (massPrompt) {
+        groupId = getOrCreateGroupForPrompt(massPrompt);
+      }
+
+      for (const fname of currentGalleryImages) {
+        if (!prompts[fname]) prompts[fname] = {};
+        prompts[fname].prompt = massPrompt;
+        prompts[fname].model  = massModel;
+        prompts[fname].promptGroupId = groupId;
+        await savePromptData(fname);
+      }
+
+      newPromptInput.value = '';
+      newModelInput.value  = '';
+      newMatrixInput.value = '';
+
+      const arr = images.filter(f => !prompts[f] || !prompts[f].prompt);
+      renderGallery(arr);
+      if (!arr.length) {
+        newAssignmentRow.style.display='none';
+      }
+    }
+
+    /* ----------------------------------------------------
+       Galerie / Render + Tooltip (Matrix-Index)
+    ---------------------------------------------------- */
+    function renderGallery(arr = null) {
+      if (arr === null) arr = images;
+      currentGalleryImages = arr;
+      gallery.innerHTML = '';
+
+      currentGalleryImages.forEach(fname => {
+        const d = document.createElement('div');
+        d.classList.add('image-item');
+        const p = prompts[fname] || {};
+
+        // Tooltip: promptGroupId => "IDABC" -> "ABC"
+        let matrixIndex = '';
+        if (p.promptGroupId && p.promptGroupId.startsWith('ID')) {
+          matrixIndex = p.promptGroupId.substring(2); // ohne "ID"
+        }
+
+        const imgEl = document.createElement('img');
+        imgEl.src = '/images/' + encodeURIComponent(fname);
+        imgEl.alt = fname;
+        imgEl.title = matrixIndex;  // Tooltip
+
+        // Markierung?
+        if (isFavMode && p.isFavorite) {
+          d.classList.add('marked');
+        }
+        if (isIndGroupMode) {
+          const gId = getCurrentMatrixGroupId();
+          if (p.indGroups?.includes(gId)) d.classList.add('marked');
+        }
+
+        // Merge-Modus?
+        if (isPromptGroupsMergeMode) {
+          // Klick toggelt Markierung
+          d.addEventListener('click', () => {
+            d.classList.toggle('marked');
+          });
+        }
+        else if (isFavMode || isIndGroupMode) {
+          // Klick toggelt Markierung
+          d.addEventListener('click', () => {
+            d.classList.toggle('marked');
+          });
+        }
+        else {
+          // Normaler Klick -> Popup
+          d.addEventListener('click', () => openPopupByName(fname));
+        }
+
+        d.appendChild(imgEl);
+        gallery.appendChild(d);
+      });
+    }
+
+    function openPopupByName(fname) {
+      currentImageIndex = currentGalleryImages.indexOf(fname);
+      showPopup(fname);
+    }
+    function showPopup(fname) {
+      const data = prompts[fname] || {};
+      popupImage.src = '/images/' + encodeURIComponent(fname);
+      popupPrompt.textContent = data.prompt || 'Kein Prompt';
+      popupModelSelect.value   = data.model || '';
+      popupDate.value          = data.monthYear || '';
+
+      scale = 1;
+      offsetY = 0;
+      applyTransform();
+      popup.classList.add('visible');
+    }
+
+    function applyTransform() {
+      popupImage.style.transform = `translateY(${offsetY}px) scale(${scale})`;
+    }
+
+    popupPrompt.addEventListener('blur', saveAllText);
+    popupModelSelect.addEventListener('change', saveAllText);
+
+    async function saveAllText() {
+      if (!popup.classList.contains('visible')) return;
+      const fname = currentGalleryImages[currentImageIndex];
+      const newPrompt = popupPrompt.textContent.trim();
+      const newModel  = popupModelSelect.value.trim();
+      if (!prompts[fname]) prompts[fname] = {};
+      prompts[fname].prompt = (newPrompt === 'Kein Prompt' ? '' : newPrompt);
+      prompts[fname].model  = newModel;
+      await savePromptData(fname);
+    }
+
+    copyPromptButton.addEventListener('click', () => {
+      const txt = popupPrompt.textContent.trim();
+      if (txt && txt !== 'Kein Prompt') {
+        navigator.clipboard.writeText(txt).catch(e=>console.error(e));
+      }
+    });
+
+    prevArrow.addEventListener('click', ()=>navImage(-1));
+    nextArrow.addEventListener('click', ()=>navImage(1));
+
+    function navImage(dir) {
+      saveAllText();
+      currentImageIndex=(currentImageIndex+dir+currentGalleryImages.length)%currentGalleryImages.length;
+      showPopup(currentGalleryImages[currentImageIndex]);
+    }
+
+    popupImage.addEventListener('wheel', evt => {
+      evt.preventDefault();
+      const zoomSpeed=0.05;
+      const delta=-Math.sign(evt.deltaY)*zoomSpeed;
+      scale+=delta;
+      if(scale<0.1) scale=0.1;
+      if(scale>5)   scale=5;
+      applyTransform();
+    }, { passive:false });
+
+    popupImage.addEventListener('click', () => {
+      if(!document.fullscreenElement) popup.requestFullscreen().catch(()=>{});
+      else document.exitFullscreen().catch(()=>{});
+    });
+
+    document.addEventListener('keydown', evt => {
+      if (!popup.classList.contains('visible')) return;
+      if (evt.key==='Escape') {
+        if (isSlideshowRunning) stopSlideshow();
+        popup.classList.remove('visible');
+        document.exitFullscreen().catch(()=>{});
+      } else if (evt.key==='ArrowLeft') {
+        navImage(-1);
+      } else if (evt.key==='ArrowRight') {
+        navImage(1);
+      } else if (evt.key==='ArrowUp') {
+        offsetY += 30;
+        applyTransform();
+      } else if (evt.key==='ArrowDown') {
+        offsetY -= 30;
+        applyTransform();
+      }
+    });
+
+    playStopBtn.addEventListener('click', ()=>{
+      if(!isSlideshowRunning) startSlideshow(currentGalleryImages, currentImageIndex);
+      else stopSlideshow();
+    });
+
+    function startSlideshow(arr, startIndex=0) {
+      isSlideshowRunning=true;
+      playStopBtn.textContent='■';
+      popup.classList.add('visible');
+      popup.requestFullscreen().catch(()=>{});
+      slideshowOrder=[...arr];
+      let slideIndex=startIndex;
+      popupImage.src='/images/'+encodeURIComponent(slideshowOrder[slideIndex]);
+      slideshowInterval=setInterval(()=>{
+        slideIndex=(slideIndex+1)%slideshowOrder.length;
+        popupImage.src='/images/'+encodeURIComponent(slideshowOrder[slideIndex]);
+      }, getSlideshowInterval());
+    }
+
+    function stopSlideshow() {
+      isSlideshowRunning=false;
+      playStopBtn.textContent='▶';
+      clearInterval(slideshowInterval);
+      slideshowInterval=null;
+      popup.classList.remove('fullscreen');
+    }
+
+    function getSlideshowInterval() {
+      return 1000*Math.pow(2, slideshowTimeIndex-1);
+    }
+
+    /* ----------------------------------------------------
+       Spalten
+    ---------------------------------------------------- */
+    function initColumnCountButton() {
+      let val = Number(columnCountBtn.textContent);
+      gallery.style.columnCount = val;
+    }
+    columnCountBtn.addEventListener('click', () => {
+      let val = Number(columnCountBtn.textContent);
+      val++;
+      if(val>15) val=1;
+      columnCountBtn.textContent=String(val);
+      gallery.style.columnCount=val;
+    });
+    columnCountBtn.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      let val = Number(columnCountBtn.textContent);
+      val--;
+      if(val<1) val=15;
+      columnCountBtn.textContent=String(val);
+      gallery.style.columnCount=val;
+    });
+    function initColumnCountWheel(){
+      columnCountBtn.addEventListener('wheel',(e)=>{
+        e.preventDefault();
+        if(e.deltaY<0) incrementColumnCount();
+        else decrementColumnCount();
+      });
+    }
+    function incrementColumnCount(){
+      let val=Number(columnCountBtn.textContent);
+      val++;
+      if(val>15) val=1;
+      columnCountBtn.textContent=String(val);
+      gallery.style.columnCount=val;
+    }
+    function decrementColumnCount(){
+      let val=Number(columnCountBtn.textContent);
+      val--;
+      if(val<1) val=15;
+      columnCountBtn.textContent=String(val);
+      gallery.style.columnCount=val;
+    }
+
+    /* ----------------------------------------------------
+       Slideshow-Zeit
+    ---------------------------------------------------- */
+    function initSlideshowTimeWheel(){
+      slideshowTimeBtn.addEventListener('wheel',(e)=>{
+        e.preventDefault();
+        if(e.deltaY<0) incrementSlideshowTime();
+        else decrementSlideshowTime();
+      });
+    }
+    function incrementSlideshowTime(){
+      slideshowTimeIndex++;
+      if(slideshowTimeIndex>9) slideshowTimeIndex=1;
+      slideshowTimeBtn.textContent=String(slideshowTimeIndex);
+    }
+    function decrementSlideshowTime(){
+      slideshowTimeIndex--;
+      if(slideshowTimeIndex<1) slideshowTimeIndex=9;
+      slideshowTimeBtn.textContent=String(slideshowTimeIndex);
+    }
+    slideshowTimeBtn.addEventListener('click',()=>{
+      slideshowTimeIndex++;
+      if(slideshowTimeIndex>9) slideshowTimeIndex=1;
+      slideshowTimeBtn.textContent=String(slideshowTimeIndex);
+    });
+
+    /* ----------------------------------------------------
+       Prompt Gruppen: Übersicht
+    ---------------------------------------------------- */
+    function showPromptGroupsOverview() {
+      // alle Koordinaten heraussuchen, die tatsächlich Bilder haben
+      const coords = Object.keys(groupToPromptMap).filter(coord =>
+        images.some(f => prompts[f]?.promptGroupId === coord)
+      );
+      if (!coords.length) {
+        renderGallery([]);
+        return;
+      }
+      // Pro Koordinate 1 Beispielbild
+      const groupSamples = [];
+      coords.forEach(coord => {
+        const arr = images.filter(f => prompts[f]?.promptGroupId === coord);
+        if (arr.length) {
+          const rnd = arr[Math.floor(Math.random() * arr.length)];
+          groupSamples.push({coord, fname: rnd});
+        }
+      });
+
+      gallery.innerHTML='';
+      groupSamples.forEach(obj => {
+        const d = document.createElement('div');
+        d.classList.add('image-item');
+        const imgEl = document.createElement('img');
+        imgEl.src = '/images/'+encodeURIComponent(obj.fname);
+        imgEl.alt = obj.fname;
+        // Tooltip: z.B. "ABC"
+        if (obj.coord.startsWith('ID')) {
+          imgEl.title = obj.coord.substring(2);
+        }
+        d.appendChild(imgEl);
+
+        // Klick -> alle Bilder dieser Gruppe anzeigen
+        d.addEventListener('click', () => {
+          const groupImgs = images.filter(f => prompts[f]?.promptGroupId === obj.coord);
+          renderGallery(groupImgs);
+        });
+
+        gallery.appendChild(d);
+      });
+    }
+
+    /* ----------------------------------------------------
+       Merge Prompt Gruppen (Markiermodus)
+       WICHTIG: Prompt wird NICHT geändert!
+    ---------------------------------------------------- */
+    function showGroupMarkingMode(){
+      markedGroups = [];
+      const coords = Object.keys(groupToPromptMap).filter(coord =>
+        images.some(f => prompts[f]?.promptGroupId === coord)
+      );
+      gallery.innerHTML='';
+      coords.forEach(coord => {
+        const groupImgs = images.filter(f => prompts[f]?.promptGroupId === coord);
+        if (!groupImgs.length) return;
+        const rnd = groupImgs[Math.floor(Math.random() * groupImgs.length)];
+
+        const d = document.createElement('div');
+        d.classList.add('image-item');
+
+        const imgEl = document.createElement('img');
+        imgEl.src = '/images/'+encodeURIComponent(rnd);
+        imgEl.alt = rnd;
+        // Tooltip
+        if (coord.startsWith('ID')) {
+          imgEl.title = coord.substring(2);
+        }
+
+        d.addEventListener('click', ()=>{
+          if (d.classList.contains('marked')) {
+            d.classList.remove('marked');
+            markedGroups = markedGroups.filter(x => x!==coord);
+          } else {
+            d.classList.add('marked');
+            markedGroups.push(coord);
+          }
+        });
+
+        d.appendChild(imgEl);
+        gallery.appendChild(d);
+      });
+    }
+
+    /**
+     * Merge: Alle markierten Gruppen in die erste "targetCoord".
+     * WICHTIG: Der Prompt der Bilder wird NICHT überschrieben.
+     */
+    async function mergeSelectedGroups(){
+      if (markedGroups.length < 2) return;
+      const targetCoord = markedGroups[0];
+      // Wir lassen "targetPrompt" weg -> Bilder behalten ihren Prompt
+
+      for (let i=1; i<markedGroups.length; i++){
+        const oldCoord = markedGroups[i];
+        // 1) Bilder auf die targetCoord umbiegen
+        for (const fname of images){
+          if (prompts[fname]?.promptGroupId === oldCoord) {
+            // Nur die promptGroupId wird neu gesetzt:
+            prompts[fname].promptGroupId = targetCoord;
+            // NICHT:  prompts[fname].prompt = ...
+            await savePromptData(fname);
+          }
+        }
+        // 2) groupToPromptMap säubern
+        delete groupToPromptMap[oldCoord];
+      }
+    }
+
+    /* ----------------------------------------------------
+       Favoriten
+    ---------------------------------------------------- */
+    function showFavorites(){
+      exitAllModes();
+      const fav = images.filter(f => prompts[f]?.isFavorite);
+      newAssignmentRow.style.display='none';
+      renderGallery(fav);
+    }
+
+    /* ----------------------------------------------------
+       Matrix (IndGruppe)
+    ---------------------------------------------------- */
+    function initMatrixButtons(){
+      updateMatrixButtons();
+
+      matrixBtnX.addEventListener('click', ()=>{
+        xActive=!xActive;
+        updateMatrixButtons();
+      });
+      matrixBtnX.addEventListener('wheel',(e)=>{
+        e.preventDefault();
+        if(!xActive) return;
+        if(e.deltaY<0) xLetter=nextLetter(xLetter);
+        else xLetter=prevLetter(xLetter);
+        updateMatrixButtons();
+        if(!isIndGroupMode) showIndGroup();
+      });
+
+      matrixBtnY.addEventListener('click', ()=>{
+        yActive=!yActive;
+        updateMatrixButtons();
+      });
+      matrixBtnY.addEventListener('wheel',(e)=>{
+        e.preventDefault();
+        if(!yActive) return;
+        if(e.deltaY<0) yLetter=nextLetter(yLetter);
+        else yLetter=prevLetter(yLetter);
+        updateMatrixButtons();
+        if(!isIndGroupMode) showIndGroup();
+      });
+
+      matrixBtnZ.addEventListener('click', ()=>{
+        zActive=!zActive;
+        updateMatrixButtons();
+      });
+      matrixBtnZ.addEventListener('wheel',(e)=>{
+        e.preventDefault();
+        if(!zActive) return;
+        if(e.deltaY<0) zLetter=nextLetter(zLetter);
+        else zLetter=prevLetter(zLetter);
+        updateMatrixButtons();
+        if(!isIndGroupMode) showIndGroup();
+      });
+    }
+    function updateMatrixButtons(){
+      matrixBtnX.textContent=xLetter;
+      matrixBtnY.textContent=yLetter;
+      matrixBtnZ.textContent=zLetter;
+      matrixBtnX.classList.toggle('active', xActive);
+      matrixBtnY.classList.toggle('active', yActive);
+      matrixBtnZ.classList.toggle('active', zActive);
+    }
+    function nextLetter(ch){
+      let code=ch.charCodeAt(0);
+      if(code<'Z'.charCodeAt(0)){
+        code++;
+      }
+      return String.fromCharCode(code);
+    }
+    function prevLetter(ch){
+      let code=ch.charCodeAt(0);
+      if(code>'A'.charCodeAt(0)){
+        code--;
+      }
+      return String.fromCharCode(code);
+    }
+    function getCurrentMatrixGroupId(){
+      return 'ID'+xLetter+yLetter+zLetter;
+    }
+    function showIndGroup(){
+      const gId = getCurrentMatrixGroupId();
+      const arr = images.filter(f => prompts[f]?.indGroups?.includes(gId));
+      renderGallery(arr);
+    }
+
+    /* ----------------------------------------------------
+       Hilfsfunktionen
+    ---------------------------------------------------- */
+    async function savePromptData(fname){
+      const p=prompts[fname]||{};
+      await fetch('/api/prompts/'+encodeURIComponent(fname), {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          prompt:p.prompt||'',
+          model:p.model||'',
+          promptGroupId:p.promptGroupId||'',
+          isFavorite:!!p.isFavorite,
+          indGroups:Array.isArray(p.indGroups)?p.indGroups:[]
+        })
+      });
+    }
+
+    async function addNewModel(modelName){
+      try {
+        const r=await fetch('/api/models',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({model:modelName})
+        });
+        if(!r.ok) throw new Error('Fehler beim Hinzufügen');
+        loadModels();
+      } catch(e){ console.error(e); }
+    }
+
+    function initModelInput(){
+      popupNewModelInput.addEventListener('keydown', async (evt)=>{
+        if(evt.key==='Enter'){
+          const val=popupNewModelInput.value.trim();
+          if(!val) return;
+          await addNewModel(val);
+          popupNewModelInput.value='';
+        }
+      });
+      newModelInput.addEventListener('keydown', async (evt)=>{
+        if(evt.key==='Enter'){
+          const val=newModelInput.value.trim();
+          if(!val) return;
+          await addNewModel(val);
+          newModelInput.value='';
+        }
+      });
+    }
+
+    function exitAllModes(){
+      isFavMode=false;
+      isIndGroupMode=false;
+      isPromptGroupsMergeMode=false;
+      markedGroups=[];
+
+      xActive=false; 
+      yActive=false; 
+      zActive=false;
+      updateMatrixButtons();
+
+      newAssignmentRow.style.display='none';
+      promptGroupsMergeBtn.textContent='Prompt Gruppen+';
+      favEditBtn.textContent='★+';
+      ingEditBtn.textContent='InG +';
+
+      enableAllButtons();
+    }
+
+    function disableAllButtonsExcept(...exceptions){
+      const buttons=document.querySelectorAll('.menu-row1 button, .menu-row2 button');
+      buttons.forEach(btn=>{
+        if(btn!==columnCountBtn && btn!==slideshowTimeBtn && !exceptions.includes(btn)){
+          btn.disabled=true;
+          btn.setAttribute('aria-disabled','true');
+        }
+      });
+    }
+    function enableAllButtons(){
+      const buttons=document.querySelectorAll('.menu-row1 button, .menu-row2 button');
+      buttons.forEach(btn=>{
+        btn.disabled=false;
+        btn.setAttribute('aria-disabled','false');
+      });
+    }
+
+    /* ----------------------------------------------------
+       Farb-Config
+    ---------------------------------------------------- */
+    function initColorConfig(){
+      colorInputs.forEach(ci=>{
+        originalColors[ci.varName]=getComputedStyle(document.documentElement).getPropertyValue(ci.varName).trim();
+      });
+      openColorConfigBtn.addEventListener('click',()=>showColorConfig(true));
+      colorPreviewBtn.addEventListener('click',previewColors);
+      colorOkBtn.addEventListener('click',applyColorsAndClose);
+      colorCancelBtn.addEventListener('click',cancelColorsAndClose);
+
+      // Sync
+      colorInputs.forEach(ci=>{
+        const colorPicker=document.getElementById(ci.colorId);
+        const textInput=document.getElementById(ci.textId);
+        colorPicker.addEventListener('input',()=>{
+          textInput.value=colorPicker.value;
+        });
+        textInput.addEventListener('input',()=>{
+          const validHex=validColor(textInput.value);
+          colorPicker.value=validHex;
+        });
+      });
+    }
+    function showColorConfig(vis){
+      colorConfigOverlay.classList.toggle('visible', vis);
+      if(vis){
+        colorInputs.forEach(ci=>{
+          let val=getComputedStyle(document.documentElement).getPropertyValue(ci.varName).trim()||'#ffffff';
+          const txt=document.getElementById(ci.textId);
+          if(ci.colorId){
+            const col=document.getElementById(ci.colorId);
+            txt.value=val;
+            col.value=validColor(val);
+          } else {
+            txt.value=val;
+          }
+        });
+      }
+    }
+    function previewColors(){
+      colorInputs.forEach(ci=>{
+        const txtVal=document.getElementById(ci.textId).value.trim();
+        document.documentElement.style.setProperty(ci.varName, txtVal);
+      });
+    }
+    async function applyColorsAndClose(){
+      const newCols={};
+      for(const ci of colorInputs){
+        const txtVal=document.getElementById(ci.textId).value.trim();
+        document.documentElement.style.setProperty(ci.varName, txtVal);
+        newCols[ci.varName.replace(/^--/,'')]=txtVal;
+      }
+      try{
+        const r=await fetch('/api/colors',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(newCols)
+        });
+        if(!r.ok) throw new Error('Fehler beim Speichern');
+      } catch(e){ console.error(e); }
+      showColorConfig(false);
+    }
+    function cancelColorsAndClose(){
+      Object.keys(originalColors).forEach(vn=>{
+        document.documentElement.style.setProperty(vn, originalColors[vn]);
+      });
+      showColorConfig(false);
+    }
+    function validColor(val){
+      const hexRegex=/^#([0-9A-F]{3}){1,2}$/i;
+      if(!hexRegex.test(val)) return '#ffffff';
+      return val;
+    }
+  </script>
+</body>
+</html>

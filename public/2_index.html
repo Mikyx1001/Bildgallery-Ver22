@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Galerie mit Farb-Popup, fixen Pfeilen & Slideshow pro Gruppe</title>
+
+  <style>
+    :root {
+      /* Seite */
+      --main-bg: #f4f4f9; /* Seiten Hintergrund */
+      --menu-bg: #2196F3; /* Menü Hintergrund */
+
+      /* Menü Buttons */
+      --menu-btn-bg: #1976D2;
+      --menu-btn-text: #ffffff;
+
+      /* Popup */
+      --popup-bg: rgba(0,0,0,0.8); /* Popup Hintergrund */
+      --popup-text: #ffffff;       /* Popup Text */
+
+      /* Pfeile und Play-Button */
+      --arrow-btn-bg: transparent; /* Pfeile Hintergrund */
+      --arrow-btn-text: #ffffff;   /* Pfeile Text */
+
+      /* Textfelder im Popup */
+      --text-field-bg: #efeff3;     /* Felder Hintergrund */
+      --text-field-text: #000000;   /* Felder Text */
+
+      /* usw. – beliebig erweiterbar */
+    }
+
+    body {
+      margin: 0;
+      background-color: var(--main-bg);
+      color: var(--text-color);
+      font-family: Arial, sans-serif;
+    }
+
+    .top-row {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0 1rem;
+      box-sizing: border-box;
+      z-index: 9999;
+      background-color: var(--menu-bg); /* Menü Hintergrund */
+    }
+    .top-row button {
+      background-color: var(--menu-btn-bg); /* Menü Buttons Hintergrund */
+      color: var(--menu-btn-text);           /* Menü Buttons Text */
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 0.5rem 0.8rem;
+      font-size: 0.9rem;
+    }
+    .top-row button:hover {
+      filter: brightness(0.9);
+    }
+
+    .container {
+      width: 90%;
+      max-width: 2000px;
+      margin: 80px auto 2rem auto;
+    }
+    .gallery {
+      column-count: 8;
+      column-gap: 8px;
+    }
+    .image-item {
+      display: inline-block;
+      width: 100%;
+      margin: 0 0 8px 0;
+      background-color: #fff;
+      border-radius: 4px;
+      border: 0 solid transparent;
+      overflow: hidden;
+    }
+    .image-item img {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: cover;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .image-item img:hover {
+      transform: scale(1.05);
+    }
+    .image-item.marked {
+      border: 2px solid red;
+    }
+
+    /* Popup */
+    .popup {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: var(--popup-bg); /* Popup Hintergrund */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start; /* Start, damit wir das Bild oben haben */
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.3s, visibility 0.3s;
+      z-index: 1000;
+      color: var(--popup-text); /* Popup Text */
+    }
+    .popup.visible {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    /* Bild selbst */
+    #popupImage {
+      max-width: 100%;
+      max-height: 70vh;
+      object-fit: contain;
+      margin-top: 2rem;
+      transition: max-height 0.3s;
+    }
+
+    /* Textfeldercontainer -> etwas tiefer = margin-top */
+    .text-fields-container {
+      position: relative;
+      margin-top: 20px; /* tiefer setzen, so "hinter" dem Bild */
+      width: 33%;
+      min-width: 250px;
+    }
+
+    .text-field {
+      background-color: var(--text-field-bg); /* Felder Hintergrund */
+      color: var(--text-field-text);           /* Felder Text */
+      margin: 0.5rem 0;
+      padding: 0.5rem;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      overflow: hidden;
+      max-height: 1.5em;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .text-field:focus {
+      max-height: none;
+      overflow: visible;
+      white-space: normal;
+    }
+
+    /* Pfeile + Play unten fix */
+    .popup-controls-row {
+      position: absolute;
+      bottom: 10px; /* kurz oberhalb des Fensterrands */
+      display: flex;
+      gap: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1001; /* Sicherstellen, dass die Buttons über den Bildern liegen */
+    }
+    .nav-arrow, .playstop-btn {
+      background-color: var(--arrow-btn-bg); /* Pfeile Hintergrund */
+      color: var(--arrow-btn-text);           /* Pfeile Text */
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 0.4rem 0.8rem;
+      background-image: none; /* Entfernt jegliche Hintergrundbilder */
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .nav-arrow:hover, .playstop-btn:hover {
+      filter: brightness(0.9);
+    }
+
+    /* Farb-Config Overlay */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      visibility: hidden;
+      opacity: 0;
+      transition: 0.3s;
+      z-index: 2000;
+    }
+    .modal-overlay.visible {
+      visibility: visible;
+      opacity: 1;
+    }
+    .color-config-modal {
+      background: #fff;
+      width: 400px;
+      max-width: 90%;
+      padding: 1rem;
+      border-radius: 6px;
+      margin: 100px auto;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      position: relative;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .color-config-modal h2 {
+      margin: 0 0 1rem 0;
+    }
+    .color-config-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.5rem 0;
+      flex-wrap: wrap;
+    }
+    .color-config-row label {
+      flex: 1 1 auto;
+    }
+    .color-config-row input[type="color"],
+    .color-config-row input[type="text"] {
+      width: 80px;
+    }
+    .color-config-buttons {
+      margin-top: 1rem;
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+
+    .model-row { display: flex; gap: 0.5rem; width: 100%; }
+    .model-input, .date-input, select {
+      flex: 1;
+      background-color: var(--text-field-bg); /* Felder Hintergrund */
+      color: var(--text-field-text);           /* Felder Text */
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      padding: 0.4rem;
+    }
+
+    /* Neue CSS-Regeln für Vollbildmodus */
+    .popup:fullscreen .text-fields-container {
+      display: none;
+    }
+    .popup:fullscreen #popupImage {
+      max-height: 90vh;
+    }
+
+  </style>
+</head>
+<body>
+  <!-- Menü -->
+  <div class="top-row">
+    <button id="uploadButton">Bilder hochladen</button>
+    <input type="file" id="imageUpload" accept="image/jpeg,image/png,image/webp" multiple style="display:none" />
+
+    <button id="sortPromptBtn">Prompt</button>
+    <button id="sortModelBtn">Model</button>
+    <button id="sortMonthBtn">Monat</button>
+    <button id="sortRandomBtn">Zufällig</button>
+
+    <button id="columnCountBtn" title="Spaltenzahl">8</button>
+    <button id="kiGalleryButton">KI Gallery</button>
+    <button id="slideshowTimeBtn" title="Slideshow-Zeit">1</button>
+
+    <button id="promptGroupOverviewBtn">Gruppe</button>
+    <button id="promptGroupEditBtn">Gruppe +</button>
+
+    <button id="favShowBtn">★</button>
+    <button id="favEditBtn">★+</button>
+
+    <button id="ingUpBtn">InG ▲</button>
+    <button id="ingIndexBtn">A</button>
+    <button id="ingDownBtn">InG ▼</button>
+    <button id="ingEditBtn">InG +</button>
+
+    <button id="openColorConfigBtn">🎨</button>
+  </div>
+
+  <div class="container">
+    <div class="gallery" id="gallery"></div>
+  </div>
+
+  <!-- Popup -->
+  <div class="popup" id="popup">
+    <img id="popupImage" src="" alt="Bildanzeige" />
+
+    <!-- Felder hinter / unter dem Bild -->
+    <div class="text-fields-container">
+      <div style="display:flex; align-items:center;">
+        <p id="popupPrompt" class="text-field" contenteditable="true">Kein Prompt</p>
+        <button id="copyPromptButton" style="border:none; background:none; cursor:pointer;">
+          Kopieren
+        </button>
+      </div>
+      <div class="model-row">
+        <select id="popupModelSelect"></select>
+        <input type="text" class="model-input" id="newModelInput" placeholder="Neues Modell" />
+        <input type="text" class="date-input" id="popupDate" readonly />
+      </div>
+    </div>
+
+    <!-- Pfeile / Play unten fix -->
+    <div class="popup-controls-row">
+      <button class="nav-arrow" id="prevArrow">←</button>
+      <button class="playstop-btn" id="playStopBtn">▶</button>
+      <button class="nav-arrow" id="nextArrow">→</button>
+    </div>
+  </div>
+
+  <!-- Farb-Config -->
+  <div class="modal-overlay" id="colorConfigOverlay">
+    <div class="color-config-modal">
+      <h2>Farben anpassen</h2>
+
+      <!-- 1. Seiten Hintergrund -->
+      <div class="color-config-row">
+        <label for="cc_main_bg">Seiten Hintergrund</label>
+        <input type="color" id="cc_main_bg_color" />
+        <input type="text" id="cc_main_bg" />
+      </div>
+
+      <!-- 2. Menü Hintergrund -->
+      <div class="color-config-row">
+        <label for="cc_menu_bg">Menü Hintergrund</label>
+        <input type="color" id="cc_menu_bg_color" />
+        <input type="text" id="cc_menu_bg" />
+      </div>
+
+      <!-- 3. Menü Buttons -->
+      <div class="color-config-row">
+        <label for="cc_menu_btn_bg">Menü Buttons</label>
+        <input type="color" id="cc_menu_btn_bg_color" />
+        <input type="text" id="cc_menu_btn_bg" />
+      </div>
+      <div class="color-config-row">
+        <label for="cc_menu_btn_text">Menü Buttons Text</label>
+        <input type="color" id="cc_menu_btn_text_color" />
+        <input type="text" id="cc_menu_btn_text" />
+      </div>
+
+      <!-- 4. Popup Hintergrund -->
+      <div class="color-config-row">
+        <label for="cc_popup_bg">Popup Hintergrund</label>
+        <input type="color" id="cc_popup_bg_color" />
+        <input type="text" id="cc_popup_bg" />
+      </div>
+
+      <!-- 5. Felder Hintergrund -->
+      <div class="color-config-row">
+        <label for="cc_field_bg">Felder Hintergrund</label>
+        <input type="color" id="cc_field_bg_color" />
+        <input type="text" id="cc_field_bg" />
+      </div>
+
+      <!-- 6. Felder Text -->
+      <div class="color-config-row">
+        <label for="cc_field_text">Felder Text</label>
+        <input type="color" id="cc_field_text_color" />
+        <input type="text" id="cc_field_text" />
+      </div>
+
+      <!-- 7. Pfeile Hintergrund -->
+      <div class="color-config-row">
+        <label for="cc_arrow_bg">Pfeile Hintergrund</label>
+        <input type="color" id="cc_arrow_bg_color" />
+        <input type="text" id="cc_arrow_bg" />
+      </div>
+
+      <!-- 8. Pfeile Text -->
+      <div class="color-config-row">
+        <label for="cc_arrow_text">Pfeile Text</label>
+        <input type="color" id="cc_arrow_text_color" />
+        <input type="text" id="cc_arrow_text" />
+      </div>
+
+      <!-- usw. Du kannst hier beliebig viele hinzufügen. -->
+
+      <div class="color-config-buttons">
+        <button id="colorPreviewBtn">Vorschau</button>
+        <button id="colorOkBtn">OK</button>
+        <button id="colorCancelBtn">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ----------------------------------------------------
+       Globale Variablen
+    ---------------------------------------------------- */
+    let images = [];
+    let prompts = {};
+
+    let currentGalleryImages = [];  // Neu: merkt sich, welche Bilder aktuell angezeigt werden
+    let currentImageIndex = 0;
+
+    let isSlideshowRunning = false;
+    let slideshowOrder = [];
+    let slideshowInterval = null;
+    let slideshowTimeIndex = 1;
+
+    let scale = 1;
+    let offsetY = 0;
+
+    // Prompt-Gruppen
+    let isPromptGroupMode = false;
+    let currentPromptGroupId = null;
+
+    // Favoriten
+    let isFavMode = false;
+
+    // Individuelle Gruppen
+    let indGroupLetter = 'A';
+    let isIndGroupMode = false;
+
+    // DOM
+    const gallery = document.getElementById('gallery');
+    const popup = document.getElementById('popup');
+    const popupImage = document.getElementById('popupImage');
+    const popupPrompt = document.getElementById('popupPrompt');
+    const copyPromptButton = document.getElementById('copyPromptButton');
+    const popupModelSelect = document.getElementById('popupModelSelect');
+    const newModelInput = document.getElementById('newModelInput');
+    const popupDate = document.getElementById('popupDate');
+
+    const prevArrow = document.getElementById('prevArrow');
+    const nextArrow = document.getElementById('nextArrow');
+    const playStopBtn = document.getElementById('playStopBtn');
+
+    // Buttons
+    const uploadButton = document.getElementById('uploadButton');
+    const imageUpload = document.getElementById('imageUpload');
+
+    const sortPromptBtn = document.getElementById('sortPromptBtn');
+    const sortModelBtn = document.getElementById('sortModelBtn');
+    const sortMonthBtn = document.getElementById('sortMonthBtn');
+    const sortRandomBtn = document.getElementById('sortRandomBtn');
+
+    const columnCountBtn = document.getElementById('columnCountBtn');
+    const slideshowTimeBtn = document.getElementById('slideshowTimeBtn');
+    const kiGalleryButton = document.getElementById('kiGalleryButton');
+
+    const promptGroupOverviewBtn = document.getElementById('promptGroupOverviewBtn');
+    const promptGroupEditBtn = document.getElementById('promptGroupEditBtn');
+
+    const favShowBtn = document.getElementById('favShowBtn');
+    const favEditBtn = document.getElementById('favEditBtn');
+
+    const ingUpBtn = document.getElementById('ingUpBtn');
+    const ingDownBtn = document.getElementById('ingDownBtn');
+    const ingIndexBtn = document.getElementById('ingIndexBtn');
+    const ingEditBtn = document.getElementById('ingEditBtn');
+
+    // Farb-Config
+    const openColorConfigBtn = document.getElementById('openColorConfigBtn');
+    const colorConfigOverlay = document.getElementById('colorConfigOverlay');
+    const colorPreviewBtn = document.getElementById('colorPreviewBtn');
+    const colorOkBtn = document.getElementById('colorOkBtn');
+    const colorCancelBtn = document.getElementById('colorCancelBtn');
+
+    // Mapping
+    let originalColors = {};
+    const colorInputs = [
+      { varName: '--main-bg',         textId: 'cc_main_bg',         colorId: 'cc_main_bg_color' },       // Seiten Hintergrund
+      { varName: '--menu-bg',         textId: 'cc_menu_bg',         colorId: 'cc_menu_bg_color' },       // Menü Hintergrund
+      { varName: '--menu-btn-bg',     textId: 'cc_menu_btn_bg',     colorId: 'cc_menu_btn_bg_color' },   // Menü Buttons Hintergrund
+      { varName: '--menu-btn-text',   textId: 'cc_menu_btn_text',   colorId: 'cc_menu_btn_text_color' }, // Menü Buttons Text
+      { varName: '--popup-bg',        textId: 'cc_popup_bg',        colorId: 'cc_popup_bg_color' },      // Popup Hintergrund
+      { varName: '--text-field-bg',   textId: 'cc_field_bg',        colorId: 'cc_field_bg_color' },      // Felder Hintergrund
+      { varName: '--text-field-text', textId: 'cc_field_text',      colorId: 'cc_field_text_color' },    // Felder Text
+      { varName: '--arrow-btn-bg',    textId: 'cc_arrow_bg',        colorId: 'cc_arrow_bg_color' },      // Pfeile Hintergrund
+      { varName: '--arrow-btn-text',  textId: 'cc_arrow_text',      colorId: 'cc_arrow_text_color' },    // Pfeile Text
+      // beliebig erweiterbar ...
+    ];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadColors();    // Farben
+      await loadImages();    // Bilder + Prompts
+      await loadModels();    // Modelle
+      initModelInput();      // "Neues Modell" per Enter
+      initColorConfig();
+    });
+
+    async function loadColors() {
+      try {
+        const r = await fetch('/api/colors');
+        if (!r.ok) throw new Error('Fehler bei Colors');
+        const col = await r.json();
+        Object.keys(col).forEach(k => {
+          document.documentElement.style.setProperty(`--${k}`, col[k]);
+        });
+      } catch(e) { console.error(e); }
+    }
+    async function loadImages() {
+      try {
+        const [r1, r2] = await Promise.all([
+          fetch('/api/images'),
+          fetch('/api/prompts')
+        ]);
+        if (!r1.ok) throw new Error('Fehler bei Images');
+        if (!r2.ok) throw new Error('Fehler bei Prompts');
+        const arr = await r1.json();
+        images = arr;
+        prompts = await r2.json();
+
+        // Sortierung: ohne Prompt zuerst
+        images.sort((a, b) => {
+          const hasA = !!(prompts[a]?.prompt);
+          const hasB = !!(prompts[b]?.prompt);
+          if (hasA === hasB) return 0;
+          return hasA ? 1 : -1;
+        });
+        renderGallery();
+      } catch(e) { console.error(e); }
+    }
+    async function loadModels() {
+      try {
+        const resp = await fetch('/api/models');
+        if (!resp.ok) throw new Error('Fehler bei Models');
+        const ml = await resp.json();
+        fillModelSelect(ml);
+      } catch(e) { console.error(e); }
+    }
+    function fillModelSelect(models) {
+      popupModelSelect.innerHTML = '';
+      models.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        popupModelSelect.appendChild(opt);
+      });
+    }
+    function initModelInput() {
+      newModelInput.addEventListener('keydown', async (evt) => {
+        if (evt.key === 'Enter') {
+          const val = newModelInput.value.trim();
+          if (!val) return;
+          try {
+            const resp = await fetch('/api/models', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ model: val })
+            });
+            if (!resp.ok) throw new Error('Fehler beim Hinzufügen');
+            newModelInput.value = '';
+            // neu laden
+            loadModels();
+          } catch(e) { console.error(e); }
+        }
+      });
+    }
+
+    /* Galerie */
+    function renderGallery(arr=null) {
+      currentGalleryImages = arr || images;
+      gallery.innerHTML = '';
+      currentGalleryImages.forEach(fname => {
+        const d = document.createElement('div');
+        d.classList.add('image-item');
+        const p = prompts[fname] || {};
+
+        // Markierungen
+        if (isPromptGroupMode && currentPromptGroupId) {
+          if (p.promptGroupId === currentPromptGroupId) d.classList.add('marked');
+        }
+        if (isFavMode && p.isFavorite) d.classList.add('marked');
+        if (isIndGroupMode) {
+          const groupId = 'ID'+indGroupLetter;
+          if (p.indGroups?.includes(groupId)) d.classList.add('marked');
+        }
+
+        const imgEl = document.createElement('img');
+        imgEl.src = '/images/'+encodeURIComponent(fname);
+        imgEl.alt = fname;
+
+        if (isPromptGroupMode || isFavMode || isIndGroupMode) {
+          // Markiermodus
+          d.addEventListener('click', () => d.classList.toggle('marked'));
+        } else {
+          // Normal => Popup
+          d.addEventListener('click', () => openPopupByName(fname));
+        }
+        d.appendChild(imgEl);
+        gallery.appendChild(d);
+      });
+    }
+
+    /* Popup / Navigation */
+    window.openPopupByName = function(fname) {
+      currentImageIndex = currentGalleryImages.indexOf(fname);
+      showPopup(fname);
+    };
+    function showPopup(fname) {
+      const data = prompts[fname] || {};
+      popupImage.src = '/images/'+encodeURIComponent(fname);
+      popupPrompt.textContent = data.prompt || 'Kein Prompt';
+      popupModelSelect.value = data.model || '';
+      popupDate.value = data.monthYear || '';
+
+      scale = 1; offsetY=0; applyTransform();
+
+      popup.classList.add('visible');
+    }
+    function applyTransform() {
+      popupImage.style.transform = `translateY(${offsetY}px) scale(${scale})`;
+    }
+
+    popupPrompt.addEventListener('blur', saveAllText);
+    popupModelSelect.addEventListener('change', saveAllText);
+
+    async function saveAllText() {
+      if (!popup.classList.contains('visible')) return;
+      const fname = currentGalleryImages[currentImageIndex];
+      const newPrompt = popupPrompt.textContent.trim();
+      const newModel = popupModelSelect.value.trim();
+      if (!prompts[fname]) prompts[fname] = {};
+      prompts[fname].prompt = (newPrompt === 'Kein Prompt' ? '' : newPrompt);
+      prompts[fname].model = newModel;
+      await savePromptData(fname);
+    }
+
+    copyPromptButton.addEventListener('click', () => {
+      const txt = popupPrompt.textContent.trim();
+      if (txt && txt !== 'Kein Prompt') {
+        navigator.clipboard.writeText(txt)
+          .then(() => console.log('kopiert'))
+          .catch(e => console.error(e));
+      }
+    });
+
+    prevArrow.addEventListener('click', () => navImage(-1));
+    nextArrow.addEventListener('click', () => navImage(1));
+    function navImage(dir) {
+      saveAllText();
+      currentImageIndex = (currentImageIndex + dir + currentGalleryImages.length) % currentGalleryImages.length;
+      showPopup(currentGalleryImages[currentImageIndex]);
+    }
+    popupImage.addEventListener('wheel', evt => {
+      evt.preventDefault();
+      const zoomSpeed = 0.05;
+      const delta = -Math.sign(evt.deltaY) * zoomSpeed;
+      scale += delta;
+      scale = Math.min(Math.max(scale, 0.1), 5);
+      applyTransform();
+    }, { passive: false });
+    popupImage.addEventListener('click', () => {
+      if (!document.fullscreenElement) popup.requestFullscreen().catch(() => {});
+      else document.exitFullscreen().catch(() => {});
+    });
+    document.addEventListener('keydown', evt => {
+      if(!popup.classList.contains('visible')) return;
+      if (evt.key === 'Escape') {
+        if (isSlideshowRunning) stopSlideshow();
+        popup.classList.remove('visible');
+        document.exitFullscreen().catch(() => {});
+      } else if(evt.key === 'ArrowLeft') navImage(-1);
+      else if(evt.key === 'ArrowRight') navImage(1);
+      else if(evt.key === 'ArrowUp') { offsetY += 30; applyTransform(); }
+      else if(evt.key === 'ArrowDown') { offsetY -= 30; applyTransform(); }
+    });
+
+    playStopBtn.addEventListener('click', () => {
+      if (!isSlideshowRunning) startSlideshow();
+      else stopSlideshow();
+    });
+    function startSlideshow() {
+      isSlideshowRunning = true;
+      playStopBtn.textContent = '■';
+      popup.classList.add('visible');
+      popup.requestFullscreen().catch(() => {});
+      slideshowOrder = [...currentGalleryImages];
+      let slideIndex = currentImageIndex;
+      popupImage.src = '/images/' + encodeURIComponent(slideshowOrder[slideIndex]);
+      slideshowInterval = setInterval(() => {
+        slideIndex = (slideIndex + 1) % slideshowOrder.length;
+        popupImage.src = '/images/' + encodeURIComponent(slideshowOrder[slideIndex]);
+      }, getSlideshowInterval());
+    }
+    function stopSlideshow() {
+      isSlideshowRunning = false;
+      playStopBtn.textContent = '▶';
+      clearInterval(slideshowInterval);
+      slideshowInterval = null;
+      popup.classList.remove('fullscreen');
+    }
+    function getSlideshowInterval() {
+      return 1000 * Math.pow(2, slideshowTimeIndex - 1);
+    }
+
+    kiGalleryButton.addEventListener('click', () => {
+      if(isSlideshowRunning) return;
+      isSlideshowRunning = true;
+      playStopBtn.textContent = '■';
+      popup.classList.add('visible');
+      popup.requestFullscreen().catch(() => {});
+      slideshowOrder = [...currentGalleryImages];
+      let slideIndex = 0;
+      popupImage.src = '/images/' + encodeURIComponent(slideshowOrder[slideIndex]);
+      slideshowInterval = setInterval(() => {
+        slideIndex = (slideIndex + 1) % slideshowOrder.length;
+        popupImage.src = '/images/' + encodeURIComponent(slideshowOrder[slideIndex]);
+      }, getSlideshowInterval());
+    });
+
+    // Sortierungen
+    sortPromptBtn.addEventListener('click', () => {
+      exitAllModes();
+      currentGalleryImages.sort((a, b) => {
+        const pa = (prompts[a]?.prompt || '').toLowerCase();
+        const pb = (prompts[b]?.prompt || '').toLowerCase();
+        return pa.localeCompare(pb);
+      });
+      renderGallery(currentGalleryImages);
+    });
+    sortModelBtn.addEventListener('click', () => {
+      exitAllModes();
+      currentGalleryImages.sort((a, b) => {
+        const ma = (prompts[a]?.model || '').toLowerCase();
+        const mb = (prompts[b]?.model || '').toLowerCase();
+        return ma.localeCompare(mb);
+      });
+      renderGallery(currentGalleryImages);
+    });
+    sortMonthBtn.addEventListener('click', ()=>{
+      exitAllModes();
+      currentGalleryImages.sort((a, b) => {
+        const ma = (prompts[a]?.monthYear || '');
+        const mb = (prompts[b]?.monthYear || '');
+        return ma.localeCompare(mb);
+      });
+      renderGallery(currentGalleryImages);
+    });
+    sortRandomBtn.addEventListener('click', ()=>{
+      exitAllModes();
+      currentGalleryImages.sort(() => 0.5 - Math.random());
+      renderGallery(currentGalleryImages);
+    });
+
+    // Spalten
+    columnCountBtn.addEventListener('click', () => {
+      let val = Number(columnCountBtn.textContent);
+      val++;
+      if(val > 15) val = 1;
+      columnCountBtn.textContent = String(val);
+      setTimeout(()=>{
+        gallery.style.columnCount = val;
+      }, 1000);
+    });
+
+    // **Neue Event Listener für rechte Maustaste hinzufügen**
+    columnCountBtn.addEventListener('contextmenu', (e) => {
+      e.preventDefault(); // Verhindert das Standard-Kontextmenü
+      let val = Number(columnCountBtn.textContent);
+      val--;
+      if(val < 1) val = 15;
+      columnCountBtn.textContent = String(val);
+      setTimeout(()=>{
+        gallery.style.columnCount = val;
+      }, 1000);
+    });
+
+    slideshowTimeBtn.addEventListener('click', ()=>{
+      slideshowTimeIndex++;
+      if(slideshowTimeIndex > 9) slideshowTimeIndex = 1;
+      slideshowTimeBtn.textContent = String(slideshowTimeIndex);
+    });
+
+    // Prompt-Gruppen
+    promptGroupOverviewBtn.addEventListener('click', ()=>{
+      exitAllModes();
+      showPromptGroupOverview();
+    });
+    function showPromptGroupOverview() {
+      const groupMap = {};
+      images.forEach(f => {
+        const gid = prompts[f]?.promptGroupId || '';
+        if(gid){
+          if(!groupMap[gid]) groupMap[gid] = [];
+          groupMap[gid].push(f);
+        }
+      });
+      const gIds = Object.keys(groupMap);
+      if(!gIds.length) {
+        renderGallery([]);
+        return;
+      }
+      const arr = [];
+      gIds.forEach(gid => {
+        const a = groupMap[gid];
+        const rnd = a[Math.floor(Math.random() * a.length)];
+        arr.push({ gid, fname: rnd });
+      });
+      gallery.innerHTML = '';
+      arr.forEach(obj => {
+        const d = document.createElement('div');
+        d.classList.add('image-item');
+        const iEl = document.createElement('img');
+        iEl.src = '/images/' + encodeURIComponent(obj.fname);
+        iEl.alt = obj.fname;
+        d.appendChild(iEl);
+        d.addEventListener('click', () => {
+          // ALLE Bilder dieser Gruppe
+          showPromptGroupImages(obj.gid);
+        });
+        gallery.appendChild(d);
+      });
+    }
+    function showPromptGroupImages(gid){
+      currentPromptGroupId = gid;
+      const groupImgs = images.filter(f => prompts[f]?.promptGroupId === gid);
+      renderGallery(groupImgs);
+    }
+    promptGroupEditBtn.addEventListener('click', ()=>{
+      if(!isPromptGroupMode){
+        exitAllModes();
+        isPromptGroupMode = true;
+        renderGallery();
+      } else {
+        if(!currentPromptGroupId) currentPromptGroupId = 'IDP' + Date.now();
+        const allItems = document.querySelectorAll('.image-item');
+        allItems.forEach(div => {
+          const fname = decodeURIComponent(div.querySelector('img').src.split('/images/')[1]);
+          if(!prompts[fname]) prompts[fname] = {};
+          if(div.classList.contains('marked')){
+            prompts[fname].promptGroupId = currentPromptGroupId;
+          } else if(prompts[fname].promptGroupId === currentPromptGroupId){
+            prompts[fname].promptGroupId = '';
+          }
+          savePromptData(fname);
+        });
+        isPromptGroupMode = false;
+        renderGallery();
+      }
+    });
+
+    // Favoriten
+    favShowBtn.addEventListener('click', ()=>{
+      exitAllModes();
+      const favs = images.filter(f => prompts[f]?.isFavorite);
+      renderGallery(favs);
+    });
+    favEditBtn.addEventListener('click', ()=>{
+      if(!isFavMode){
+        exitAllModes();
+        isFavMode = true;
+        renderGallery();
+      } else {
+        const all = document.querySelectorAll('.image-item');
+        all.forEach(div => {
+          const fname = decodeURIComponent(div.querySelector('img').src.split('/images/')[1]);
+          if(!prompts[fname]) prompts[fname] = {};
+          prompts[fname].isFavorite = div.classList.contains('marked');
+          savePromptData(fname);
+        });
+        isFavMode = false;
+        // Favoriten anzeigen
+        const fav = images.filter(f => prompts[f]?.isFavorite);
+        renderGallery(fav);
+      }
+    });
+
+    // Ind-Gruppen
+    ingIndexBtn.textContent = indGroupLetter;
+    ingUpBtn.addEventListener('click', ()=>{
+      const c = indGroupLetter.charCodeAt(0);
+      if(c < 88) indGroupLetter = String.fromCharCode(c + 1); // 'X'=88
+      ingIndexBtn.textContent = indGroupLetter;
+      exitAllModes();
+      showIndGroup(indGroupLetter);
+    });
+    ingDownBtn.addEventListener('click', ()=>{
+      const c = indGroupLetter.charCodeAt(0);
+      if(c > 65) indGroupLetter = String.fromCharCode(c - 1); // 'A'=65
+      ingIndexBtn.textContent = indGroupLetter;
+      exitAllModes();
+      showIndGroup(indGroupLetter);
+    });
+    ingEditBtn.addEventListener('click', ()=>{
+      if(!isIndGroupMode){
+        exitAllModes();
+        isIndGroupMode = true;
+        renderGallery();
+      } else {
+        const groupId = 'ID' + indGroupLetter;
+        const all = document.querySelectorAll('.image-item');
+        all.forEach(div => {
+          const fname = decodeURIComponent(div.querySelector('img').src.split('/images/')[1]);
+          if(!prompts[fname]) prompts[fname] = {};
+          if(!Array.isArray(prompts[fname].indGroups)) prompts[fname].indGroups = [];
+          if(div.classList.contains('marked')){
+            if(!prompts[fname].indGroups.includes(groupId)){
+              prompts[fname].indGroups.push(groupId);
+            }
+          } else {
+            prompts[fname].indGroups = prompts[fname].indGroups.filter(x => x !== groupId);
+          }
+          savePromptData(fname);
+        });
+        isIndGroupMode = false;
+        showIndGroup(indGroupLetter);
+      }
+    });
+    function showIndGroup(letter){
+      const gId = 'ID' + letter;
+      const arr = images.filter(x => prompts[x]?.indGroups?.includes(gId));
+      renderGallery(arr);
+    }
+
+    // Hilfsfunktionen
+    async function savePromptData(fname) {
+      const p = prompts[fname] || {};
+      await fetch('/api/prompts/' + encodeURIComponent(fname), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: p.prompt || '',
+          model: p.model || '',
+          promptGroupId: p.promptGroupId || '',
+          isFavorite: !!p.isFavorite,
+          indGroups: Array.isArray(p.indGroups) ? p.indGroups : []
+        })
+      });
+    }
+    function exitAllModes(){
+      isPromptGroupMode = false;
+      currentPromptGroupId = null;
+      isFavMode = false;
+      isIndGroupMode = false;
+    }
+
+    /* -----------------------------------------------------
+       Farb-Config
+    ----------------------------------------------------- */
+    function initColorConfig(){
+      colorInputs.forEach(ci => {
+        originalColors[ci.varName] = getComputedStyle(document.documentElement).getPropertyValue(ci.varName).trim();
+      });
+      openColorConfigBtn.addEventListener('click', () => showColorConfig(true));
+      colorPreviewBtn.addEventListener('click', previewColors);
+      colorOkBtn.addEventListener('click', applyColorsAndClose);
+      colorCancelBtn.addEventListener('click', cancelColorsAndClose);
+
+      // Hinzugefügte Event Listener zur Synchronisation
+      colorInputs.forEach(ci => {
+        const colorPicker = document.getElementById(ci.colorId);
+        const textInput = document.getElementById(ci.textId);
+
+        // Wenn der Farbwähler geändert wird, aktualisiere das Textfeld
+        colorPicker.addEventListener('input', () => {
+          textInput.value = colorPicker.value;
+        });
+
+        // Wenn das Textfeld geändert wird, aktualisiere den Farbwähler
+        textInput.addEventListener('input', () => {
+          const validHex = validColor(textInput.value);
+          colorPicker.value = validHex;
+        });
+      });
+    }
+    function showColorConfig(vis){
+      colorConfigOverlay.classList.toggle('visible', vis);
+      if(vis){
+        // Füllen
+        colorInputs.forEach(ci => {
+          let val = getComputedStyle(document.documentElement).getPropertyValue(ci.varName).trim() || '#ffffff';
+          const txt = document.getElementById(ci.textId);
+          if(ci.colorId){
+            const col = document.getElementById(ci.colorId);
+            txt.value = val;
+            col.value = validColor(val);
+          } else {
+            // falls mal Schriftart oder so
+            txt.value = val;
+          }
+        });
+      }
+    }
+    function previewColors(){
+      colorInputs.forEach(ci => {
+        const txtVal = document.getElementById(ci.textId).value.trim();
+        document.documentElement.style.setProperty(ci.varName, txtVal);
+      });
+    }
+    async function applyColorsAndClose(){
+      const newCols = {};
+      for(const ci of colorInputs){
+        const txtVal = document.getElementById(ci.textId).value.trim();
+        document.documentElement.style.setProperty(ci.varName, txtVal);
+        newCols[ci.varName.replace(/^--/, '')] = txtVal;
+      }
+      // Speichern
+      try{
+        const r = await fetch('/api/colors',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(newCols)
+        });
+        if(!r.ok) throw new Error('Fehler beim Speichern');
+      } catch(e){ console.error(e); }
+      showColorConfig(false);
+    }
+    function cancelColorsAndClose(){
+      Object.keys(originalColors).forEach(vn => {
+        document.documentElement.style.setProperty(vn, originalColors[vn]);
+      });
+      showColorConfig(false);
+    }
+    function validColor(val){
+      const hexRegex = /^#([0-9A-F]{3}){1,2}$/i;
+      if(!hexRegex.test(val)) return '#ffffff';
+      return val;
+    }
+  </script>
+</body>
+</html>

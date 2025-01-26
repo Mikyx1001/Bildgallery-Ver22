@@ -1,0 +1,13 @@
+{
+  "main-bg": "#212b17",
+  "menu-bg": "#212b17",
+  "menu-btn-bg": "#3c3c3c",
+  "menu-btn-text": "#ffffff",
+  "popup-bg": "transparent",
+  "text-field-bg": "#004848",
+  "text-field-text": "#ffffff",
+  "arrow-btn-bg": "transparent",
+  "arrow-btn-text": "#804000",
+  "slideshow-gallery-bg": "#530000",
+  "slideshow-gallery-text": "#ffffff"
+}
